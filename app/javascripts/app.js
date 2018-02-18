@@ -43,21 +43,7 @@ window.App = {
       if (accs.length == 0) {
         alert("Couldn't get any accounts! Make sure your Ethereum client is configured correctly.");
         return;
-      }
-
-  
-
-    // Crowdsale.deployed().then(function (instance) {
-    //   instance.token().then(function(addr) {
-    //     AvraToken.at(addr).then(function(inst) {
-    //     AvraInstance = inst
-    //    }) 
-    //   })
-    // })
-   
-  
-    
-    
+      }    
     accounts = accs;
     account = accounts[0];
     
@@ -125,19 +111,6 @@ window.App = {
       })
      }
    )
-
-    
-    // getTokenInstance().then(function(instance) {
-    //   avra = instance;
-    //   return avra.balanceOf.call(account, {from: account});
-    // }).then(function(value) {
-    //   console.log("Balance ", value)
-    //   var balance_element = document.getElementById("balance");
-    //   balance_element.innerHTML = value.valueOf();
-    // }).catch(function(e) {
-    //   console.log(e);
-    //   self.setStatus("Error getting balance; see log.");
-    // });
   },
 
   sendCoin: function() {
