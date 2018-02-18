@@ -150,40 +150,34 @@ contract StandardToken is ERC20, BasicToken {
 
 }
 
-
-contract MintableToken is StandardToken, Ownable {
-  event Mint(address indexed to, uint256 amount);
-  event MintFinished();
-
-  bool public mintingFinished = false;
-
-
-  modifier canMint() {
-    require(!mintingFinished);
-    _;
+contract AvraToken is StandardToken, Ownable {
+    
+  string public constant name = "Avra Token";
+   
+  string public constant symbol = "AVR";
+    
+  uint32 public constant decimals = 2;
+ 
+  uint256 public INITIAL_SUPPLY = 1000000 * (10**decimals);
+ 
+  function AvraToken() {
+    totalSupply_ = INITIAL_SUPPLY;
+    balances[msg.sender] = INITIAL_SUPPLY;
   }
-
-  
-  function mint(address _to, uint256 _amount) onlyOwner canMint public returns (bool) {
-    totalSupply_ = totalSupply_.add(_amount);
+  function buy(address _to, uint256 _amount) onlyOwner public returns (bool) {
+    balances[msg.sender] = balances[msg.sender].sub(_amount);
     balances[_to] = balances[_to].add(_amount);
-    Mint(_to, _amount);
     Transfer(address(0), _to, _amount);
     return true;
   }
-
-  function finishMinting() onlyOwner canMint public returns (bool) {
-    mintingFinished = true;
-    MintFinished();
-    return true;
-  }
+    
 }
 
 contract Crowdsale {
   using SafeMath for uint256;
 
   // The token being sold
-  MintableToken public token;
+  AvraToken public token;
 
   // start and end timestamps where investments are allowed (both inclusive)
   uint256 public startTime;
@@ -194,9 +188,6 @@ contract Crowdsale {
 
   // how many token units a buyer gets per wei
   uint256 public rate;
-
-  // amount of raised money in wei
-  uint256 public weiRaised;
 
   
   event TokenPurchase(address indexed purchaser, address indexed beneficiary, uint256 value, uint256 amount);
@@ -214,7 +205,7 @@ contract Crowdsale {
     rate = _rate;
     wallet = _wallet;
     // token = _token;
-    token = new MintableToken();
+    token = new AvraToken();
   }
 
   // fallback function can be used to buy tokens
@@ -232,10 +223,8 @@ contract Crowdsale {
     // calculate token amount to be created
     uint256 tokens = getTokenAmount(weiAmount);
 
-    // update state
-    weiRaised = weiRaised.add(weiAmount);
 
-    token.mint(beneficiary, tokens);
+    token.buy(beneficiary, tokens);
     TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
 
     forwardFunds();
@@ -246,9 +235,10 @@ contract Crowdsale {
     return now > endTime;
   }
 
-  // Override this method to have a way to add business logic to your crowdsale when buying
+  // 1 Eth = 1000 Avra
   function getTokenAmount(uint256 weiAmount) internal view returns(uint256) {
-    return weiAmount.mul(rate);
+     uint tokens = rate.mul(weiAmount).div(1 ether);
+    return tokens;
   }
 
   // send ether to the fund collection wallet

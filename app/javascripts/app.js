@@ -7,15 +7,21 @@ import { default as contract } from 'truffle-contract'
 
 // Import our contract artifacts and turn them into usable abstractions.
 import metacoin_artifacts from '../../build/contracts/MetaCoin.json'
+import crowdsale_artifacts from '../../build/contracts/Crowdsale.json'
+import avra_artifacts from '../../build/contracts/AvraToken.json'
 
 // MetaCoin is our usable abstraction, which we'll use through the code below.
 var MetaCoin = contract(metacoin_artifacts);
+var Crowdsale = contract(crowdsale_artifacts);
+var AvraToken = contract(avra_artifacts);
 
 // The following code is simple to show off interacting with your contracts.
 // As your needs grow you will likely need to change its form and structure.
 // For application bootstrapping, check out window.addEventListener below.
 var accounts;
 var account;
+var crowdsaleAddress;
+
 
 window.App = {
   start: function() {
@@ -23,6 +29,9 @@ window.App = {
 
     // Bootstrap the MetaCoin abstraction for Use.
     MetaCoin.setProvider(web3.currentProvider);
+    Crowdsale.setProvider(web3.currentProvider);
+    AvraToken.setProvider(web3.currentProvider);
+
 
     // Get the initial account balance so it can be displayed.
     web3.eth.getAccounts(function(err, accs) {
@@ -36,9 +45,31 @@ window.App = {
         return;
       }
 
-      accounts = accs;
-      account = accounts[0];
+  
 
+    // Crowdsale.deployed().then(function (instance) {
+    //   instance.token().then(function(addr) {
+    //     AvraToken.at(addr).then(function(inst) {
+    //     AvraInstance = inst
+    //    }) 
+    //   })
+    // })
+   
+  
+    
+    
+    accounts = accs;
+    account = accounts[0];
+    
+
+
+    var accountInterval = setInterval(function() {
+        if (web3.eth.defaultAccount!== account) {
+          account = web3.eth.accounts[0];
+          window.App.updateCurrentAcc();
+         }
+      }, 1000);
+     
       self.refreshBalance();
     });
   },
@@ -48,20 +79,65 @@ window.App = {
     status.innerHTML = message;
   },
 
+  updateCurrentAcc: function () {
+    var curr_acc_element = document.getElementById('account')
+    curr_acc_element.innerHTML = account.valueOf()
+  },
+
+   getTokenInstance: async function () {
+    let crowdsale = await Crowdsale.deployed()
+    let tokenAddress = await crowdsale.token()
+    let avraInstance = AvraToken.at(tokenAddress)
+    console.log(avraInstance)
+    return avraInstance
+  },
+
+ 
   refreshBalance: function() {
     var self = this;
 
-    var meta;
-    MetaCoin.deployed().then(function(instance) {
-      meta = instance;
-      return meta.getBalance.call(account, {from: account});
-    }).then(function(value) {
-      var balance_element = document.getElementById("balance");
-      balance_element.innerHTML = value.valueOf();
-    }).catch(function(e) {
-      console.log(e);
-      self.setStatus("Error getting balance; see log.");
-    });
+    Crowdsale.deployed().then(function (instance) {
+      crowdsaleAddress = instance.address
+
+      instance.startTime().then(startTime => {
+        var start_time_element = document.getElementById('start_time')
+        start_time_element.innerHTML = timeConverter(startTime.c[0]).valueOf()
+
+      })
+      instance.endTime().then(endTime => {
+        var result = endTime.c[0]
+        console.log((result))
+        var endTime_element = document.getElementById('end_time')
+       // endTime_element.innerHTML = timeConverter(result).valueOf()
+
+      })
+
+      var crowd_addr_element = document.getElementById('crowd_addr')
+      crowd_addr_element.innerHTML = crowdsaleAddress.valueOf()
+    })
+  
+    self.getTokenInstance().then(inst => {
+      inst.balanceOf(account).then(bal => {
+        var value = bal.c[0]
+        var balance_element = document.getElementById("balance");
+        balance_element.innerHTML = value.valueOf();
+        console.log(bal.c[0])
+      })
+     }
+   )
+
+    
+    // getTokenInstance().then(function(instance) {
+    //   avra = instance;
+    //   return avra.balanceOf.call(account, {from: account});
+    // }).then(function(value) {
+    //   console.log("Balance ", value)
+    //   var balance_element = document.getElementById("balance");
+    //   balance_element.innerHTML = value.valueOf();
+    // }).catch(function(e) {
+    //   console.log(e);
+    //   self.setStatus("Error getting balance; see log.");
+    // });
   },
 
   sendCoin: function() {
@@ -83,6 +159,19 @@ window.App = {
       console.log(e);
       self.setStatus("Error sending coin; see log.");
     });
+  },
+
+   timeConverter: function(UNIX_timestamp){
+    var a = new Date(UNIX_timestamp * 1000);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var year = a.getFullYear();
+    var month = months[a.getMonth()];
+    var date = a.getDate();
+    var hour = a.getHours();
+    var min = a.getMinutes();
+    var sec = a.getSeconds();
+    var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+    return time;
   }
 };
 
@@ -95,7 +184,7 @@ window.addEventListener('load', function() {
   } else {
     console.warn("No web3 detected. Falling back to http://127.0.0.1:9545. You should remove this fallback when you deploy live, as it's inherently insecure. Consider switching to Metamask for development. More info here: http://truffleframework.com/tutorials/truffle-and-metamask");
     // fallback - use your fallback strategy (local node / hosted node + in-dapp id mgmt / fail)
-    window.web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:9545"));
+    window.web3 = new Web3(new Web3.providers.HttpProvider("http://127.0.0.1:8545"));
   }
 
   App.start();
