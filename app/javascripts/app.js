@@ -101,14 +101,14 @@ window.App = {
 
       instance.startTime().then(startTime => {
         var start_time_element = document.getElementById('start_time')
-        start_time_element.innerHTML = timeConverter(startTime.c[0]).valueOf()
+        start_time_element.innerHTML = App.timeConverter(startTime.c[0]).valueOf()
 
       })
       instance.endTime().then(endTime => {
         var result = endTime.c[0]
         console.log((result))
         var endTime_element = document.getElementById('end_time')
-       // endTime_element.innerHTML = timeConverter(result).valueOf()
+       endTime_element.innerHTML = App.timeConverter(result).valueOf()
 
       })
 
