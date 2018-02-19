@@ -2,8 +2,12 @@
 import "../stylesheets/app.css";
 
 // Import libraries we need.
-import { default as Web3} from 'web3';
-import { default as contract } from 'truffle-contract'
+import {
+  default as Web3
+} from 'web3';
+import {
+  default as contract
+} from 'truffle-contract'
 
 // Import our contract artifacts and turn them into usable abstractions.
 import metacoin_artifacts from '../../build/contracts/MetaCoin.json'
@@ -24,131 +28,129 @@ var crowdsaleAddress;
 
 
 window.App = {
-  start: function() {
-    var self = this;
+    start: function () {
+      var self = this;
 
-    // Bootstrap the MetaCoin abstraction for Use.
-    MetaCoin.setProvider(web3.currentProvider);
-    Crowdsale.setProvider(web3.currentProvider);
-    AvraToken.setProvider(web3.currentProvider);
-
-
-    // Get the initial account balance so it can be displayed.
-    web3.eth.getAccounts(function(err, accs) {
-      if (err != null) {
-        alert("There was an error fetching your accounts.");
-        return;
-      }
-
-      if (accs.length == 0) {
-        alert("Couldn't get any accounts! Make sure your Ethereum client is configured correctly.");
-        return;
-      }    
-    accounts = accs;
-    account = accounts[0];
-    
+      // Bootstrap the MetaCoin abstraction for Use.
+      MetaCoin.setProvider(web3.currentProvider);
+      Crowdsale.setProvider(web3.currentProvider);
+      AvraToken.setProvider(web3.currentProvider);
 
 
-    var accountInterval = setInterval(function() {
-        if (web3.eth.defaultAccount!== account) {
-          account = web3.eth.accounts[0];
-          window.App.updateCurrentAcc();
-         }
-      }, 1000);
-     
-      self.refreshBalance();
-    });
-  },
+      // Get the initial account balance so it can be displayed.
+      web3.eth.getAccounts(function (err, accs) {
+        if (err != null) {
+          alert("There was an error fetching your accounts.");
+          return;
+        }
 
-  setStatus: function(message) {
-    var status = document.getElementById("status");
-    status.innerHTML = message;
-  },
+        if (accs.length == 0) {
+          alert("Couldn't get any accounts! Make sure your Ethereum client is configured correctly.");
+          return;
+        }
+        accounts = accs;
+        account = accounts[0];
 
-  updateCurrentAcc: function () {
-    var curr_acc_element = document.getElementById('account')
-    curr_acc_element.innerHTML = account.valueOf()
-  },
 
-   getTokenInstance: async function () {
-    let crowdsale = await Crowdsale.deployed()
-    let tokenAddress = await crowdsale.token()
-    let avraInstance = AvraToken.at(tokenAddress)
-    console.log(avraInstance)
-    return avraInstance
-  },
 
- 
-  refreshBalance: function() {
-    var self = this;
+        var accountInterval = setInterval(function () {
+          if (web3.eth.defaultAccount !== account) {
+            account = web3.eth.accounts[0];
+            window.App.updateCurrentAcc();
+            self.refreshBalance();
+          }
+        }, 3000);
 
-    Crowdsale.deployed().then(function (instance) {
-      crowdsaleAddress = instance.address
+      });
+    },
 
-      instance.startTime().then(startTime => {
-        var start_time_element = document.getElementById('start_time')
-        start_time_element.innerHTML = App.timeConverter(startTime.c[0]).valueOf()
+    setStatus: function (message) {
+      var status = document.getElementById("status");
+      status.innerHTML = message;
+    },
 
+    updateCurrentAcc: function () {
+      var curr_acc_element = document.getElementById('account')
+      curr_acc_element.innerHTML = account.valueOf()
+    },
+
+    getTokenInstance: async function () {
+      let crowdsale = await Crowdsale.deployed()
+      let tokenAddress = await crowdsale.token()
+      let avraInstance = AvraToken.at(tokenAddress)
+      return avraInstance
+    },
+
+
+    refreshBalance: function () {
+      var self = this;
+
+      Crowdsale.deployed().then(function (instance) {
+        crowdsaleAddress = instance.address
+
+        instance.startTime().then(startTime => {
+          var start_time_element = document.getElementById('start_time')
+          start_time_element.innerHTML = App.timeConverter(startTime.c[0]).valueOf()
+
+        })
+        instance.endTime().then(endTime => {
+          var result = endTime.c[0]
+          var endTime_element = document.getElementById('end_time')
+          endTime_element.innerHTML = App.timeConverter(result).valueOf()
+
+        })
+
+        var crowd_addr_element = document.getElementById('crowd_addr')
+        crowd_addr_element.innerHTML = crowdsaleAddress.valueOf()
       })
-      instance.endTime().then(endTime => {
-        var result = endTime.c[0]
-        console.log((result))
-        var endTime_element = document.getElementById('end_time')
-       endTime_element.innerHTML = App.timeConverter(result).valueOf()
 
+      self.getTokenInstance().then(inst => {
+        inst.balanceOf(account).then(bal => {
+          var value = bal.c[0]
+          var balance_element = document.getElementById("balance");
+          balance_element.innerHTML = value.valueOf();
+        })
       })
+    },
 
-      var crowd_addr_element = document.getElementById('crowd_addr')
-      crowd_addr_element.innerHTML = crowdsaleAddress.valueOf()
-    })
-  
-    self.getTokenInstance().then(inst => {
-      inst.balanceOf(account).then(bal => {
-        var value = bal.c[0]
-        var balance_element = document.getElementById("balance");
-        balance_element.innerHTML = value.valueOf();
-        console.log(bal.c[0])
-      })
-     }
-   )
+    sendCoin: function () {
+      var self = this;
+
+
+      var amount = parseInt(document.getElementById("amount").value);
+      var receiver = document.getElementById("receiver").value;
+
+      this.setStatus("Initiating transaction... (please wait)");
+
+
+      self.getTokenInstance().then(inst => {
+        inst.transfer(receiver, amount, {
+          from: account
+        })
+      }).then(function () {
+        self.setStatus("Transaction complete!");
+        self.refreshBalance();
+      }).catch(function (e) {
+        console.log(e);
+        self.setStatus("Error sending coin; see log.");
+      });
   },
 
-  sendCoin: function() {
-    var self = this;
-
-    var amount = parseInt(document.getElementById("amount").value);
-    var receiver = document.getElementById("receiver").value;
-
-    this.setStatus("Initiating transaction... (please wait)");
-
-    var meta;
-    MetaCoin.deployed().then(function(instance) {
-      meta = instance;
-      return meta.sendCoin(receiver, amount, {from: account});
-    }).then(function() {
-      self.setStatus("Transaction complete!");
-      self.refreshBalance();
-    }).catch(function(e) {
-      console.log(e);
-      self.setStatus("Error sending coin; see log.");
-    });
-  },
-
-   timeConverter: function(UNIX_timestamp){
+  timeConverter: function (UNIX_timestamp) {
     var a = new Date(UNIX_timestamp * 1000);
-    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     var year = a.getFullYear();
     var month = months[a.getMonth()];
     var date = a.getDate();
     var hour = a.getHours();
     var min = a.getMinutes();
     var sec = a.getSeconds();
-    var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec ;
+    var time = date + ' ' + month + ' ' + year + ' ' + hour + ':' + min + ':' + sec;
     return time;
   }
 };
 
-window.addEventListener('load', function() {
+window.addEventListener('load', function () {
   // Checking if Web3 has been injected by the browser (Mist/MetaMask)
   if (typeof web3 !== 'undefined') {
     console.warn("Using web3 detected from external source. If you find that your accounts don't appear or you have 0 MetaCoin, ensure you've configured that source properly. If using MetaMask, see the following link. Feel free to delete this warning. :) http://truffleframework.com/tutorials/truffle-and-metamask")
