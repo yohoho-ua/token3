@@ -224,7 +224,8 @@ contract Crowdsale {
     uint256 tokens = getTokenAmount(weiAmount);
 
 
-    token.buy(beneficiary, tokens);
+    // token.buy(beneficiary, tokens);
+    token.transfer(beneficiary, tokens);
     TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
 
     forwardFunds();
